@@ -17,16 +17,10 @@ restoring them.
 ## Requirements
 
 1. **A phone with USB debugging enabled** (see below).
-2. **adb (Android Platform-Tools) installed.** If the scripts can't find `adb`, they print the
-   official download link and offer to open it:
-
-   ```
-   https://developer.android.com/tools/releases/platform-tools
-   ```
-
-   Download *SDK Platform-Tools for Windows*, unzip it, then either:
-   - add that folder to your `PATH`, or
-   - drop `adb.exe` next to these scripts.
+2. **adb (Android Platform-Tools).** You don't have to install this yourself. If the scripts
+   can't find `adb`, they ask for confirmation and then download the official SDK Platform-Tools
+   from Google (`developer.android.com`, ~15 MB) and install it next to the scripts
+   automatically.
 
 3. **USB cable** and the phone unlocked.
 
@@ -91,6 +85,10 @@ scheduled task or a bigger script.
 ---
 
 ## Notes and troubleshooting
+
+**First run downloads adb.** If `adb` isn't installed, the first run asks whether to install it,
+then downloads the official Platform-Tools (~15 MB) from Google. Say no to skip, or delete the
+`platform-tools/` folder next to the scripts to remove the auto-installed copy.
 
 **`MSYS_NO_PATHCONV=1` in the shell script.** On Git Bash, a path like `/sdcard/...` gets rewritten
 into `C:/Program Files/Git/sdcard/...` before `adb` sees it. The script sets this itself — don't

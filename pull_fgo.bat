@@ -15,11 +15,9 @@ rem
 rem Notes:
 rem   - The phone must be unlocked and USB-debugging authorized (tap Allow on the
 rem     RSA prompt the first time you plug in).
-rem   - Requires adb.exe somewhere on PATH. If it's missing, this script offers
-rem     to open Google's official Platform-Tools download page.
+rem   - Requires adb.exe somewhere on PATH. If it's missing, this script can
+rem     install the official SDK Platform-Tools automatically (asks first).
 rem ---------------------------------------------------------------------------
-
-set "ADB_URL=https://developer.android.com/tools/releases/platform-tools"
 
 rem --- output dir + file list -------------------------------------------------
 
@@ -45,21 +43,78 @@ if "%COUNT%"=="0" (
 
 rem --- ensure adb is available ------------------------------------------------
 
+set "ADB=adb"
 where adb >nul 2>&1
+if not errorlevel 1 goto adb_ready
+
+if exist "%~dp0adb.exe" (
+  set "ADB=%~dp0adb.exe"
+  goto adb_ready
+)
+if exist "%~dp0platform-tools\adb.exe" (
+  set "ADB=%~dp0platform-tools\adb.exe"
+  goto adb_ready
+)
+
+echo.
+echo   adb was not found on PATH or next to this script.
+echo.
+echo   This script can install the official Android SDK Platform-Tools
+echo   automatically (~15 MB download from developer.android.com).
+echo.
+choice /c YN /n /m "  Install adb now? [Y/N] "
+if errorlevel 2 (
+  echo.
+  echo   Cancelled. Install adb first, then re-run.
+  pause
+  exit /b 1
+)
+
+rem Download the official Windows Platform-Tools zip and unpack it next to the script.
+set "ZIP_URL=https://dl.google.com/android/repository/platform-tools-latest-windows.zip"
+set "ZIP=%TEMP%\fgo-platform-tools-%RANDOM%.zip"
+
+echo.
+echo   Downloading Android SDK Platform-Tools from Google...
+echo     %ZIP_URL%
+powershell -NoProfile -Command "[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; try { Invoke-WebRequest -Uri '%ZIP_URL%' -OutFile '%ZIP%' -UseBasicParsing } catch { Write-Host ('download failed: ' + $_.Exception.Message); exit 1 }"
 if errorlevel 1 (
   echo.
-  echo   adb not found on PATH.
+  echo   error: download failed. Check your connection and try again.
+  del "%ZIP%" >nul 2>&1
+  pause
+  exit /b 1
+)
+
+echo   Extracting...
+powershell -NoProfile -Command "try { Expand-Archive -LiteralPath '%ZIP%' -DestinationPath '%~dp0' -Force } catch { Write-Host ('extract failed: ' + $_.Exception.Message); exit 1 }"
+if errorlevel 1 (
   echo.
-  echo   Get the official Android SDK Platform-Tools here:
-  echo     %ADB_URL%
+  echo   error: extraction failed.
+  del "%ZIP%" >nul 2>&1
+  pause
+  exit /b 1
+)
+del "%ZIP%" >nul 2>&1
+
+if not exist "%~dp0platform-tools\adb.exe" (
   echo.
-  echo   Download "SDK Platform-Tools for Windows", unzip it, and either add that
-  echo   folder to PATH or drop adb.exe next to this script.
-  echo.
-  choice /c YN /m "Open the download page now" >nul 2>&1
-  if not errorlevel 2 start "" "%ADB_URL%"
-  echo.
-  echo   Install adb first, then re-run.
+  echo   error: adb.exe not found after extraction.
+  pause
+  exit /b 1
+)
+set "ADB=%~dp0platform-tools\adb.exe"
+
+echo.
+echo   adb installed -^> %ADB%
+echo.
+
+:adb_ready
+
+rem sanity check that the resolved adb actually runs
+"%ADB%" version >nul 2>&1
+if errorlevel 1 (
+  echo   error: adb is not usable: %ADB%
   pause
   exit /b 1
 )
@@ -69,8 +124,7 @@ rem --- wait for a device ------------------------------------------------------
 set "STATE="
 set /a tries=0
 :wait_device
-adb get-state >nul 2>&1
-for /f "delims=" %%s in ('adb get-state 2^>nul') do set "STATE=%%s"
+for /f "usebackq delims=" %%s in (`"%ADB%" get-state 2^>nul`) do set "STATE=%%s"
 if "%STATE%"=="device" goto device_ready
 if "%STATE%"=="unauthorized" echo   Waiting for USB-debugging authorization on the phone...
 set /a tries+=1
@@ -86,7 +140,7 @@ pause
 exit /b 1
 
 :device_ready
-adb devices -l
+"%ADB%" devices -l
 
 rem --- pull -------------------------------------------------------------------
 
@@ -100,7 +154,7 @@ set /a i=1
 :pull_loop
 if !i! GTR %COUNT% goto pull_done
 call set "f=%%FILE!i!%%"
-adb pull "%REMOTE_BASE%/!f!" "%OUTDIR%\files\data" >nul 2>&1
+"%ADB%" pull "%REMOTE_BASE%/!f!" "%OUTDIR%\files\data" >nul 2>&1
 if errorlevel 1 (
   echo   missing: !f!
   set /a FAIL+=1
