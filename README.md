@@ -1,6 +1,8 @@
 # FGO save file puller
 
-Pulls a handful of small Fate/Grand Order save files off an Android phone via `adb`. Based on [this](https://www.reddit.com/r/grandorder/comments/hfbz0h/fgo_save_files_for_na_and_jp_play_on_multiple/) guide
+Based on [this](https://www.reddit.com/r/grandorder/comments/hfbz0h/fgo_save_files_for_na_and_jp_play_on_multiple/) guide
+
+Pulls a handful of small Fate/Grand Order save files off an Android phone via `adb`.
 
 | File | Size |
 |---|---|
@@ -63,20 +65,6 @@ pull_fgo.bat mybackup aaa bbb   :: -> specific files only
 
 Both scripts accept the same arguments. With no arguments they pull the four default files into
 `fgo_android_data/files/data/`.
-
-### What you'll see
-
-```
-List of devices attached
-976de6                 device product:CPH2773 model:CPH2773 device:OP5B16L1
-
-  ok: 54cc*
-  ok: 969b*
-  ok: 644b*
-  ok: e1a9*
-
-pulled 4 file(s), 0 missing -> fgo_android_data/files/data/
-```
 
 Missing files are reported as `missing: <name>` and skipped rather than aborting the run. Both
 scripts exit with code `1` if any file was missing, `0` otherwise, so they behave sensibly in a
