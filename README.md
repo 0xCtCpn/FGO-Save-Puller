@@ -2,7 +2,7 @@
 
 Based on [this](https://www.reddit.com/r/grandorder/comments/hfbz0h/fgo_save_files_for_na_and_jp_play_on_multiple/) guide
 
-Pulls a handful of small Fate/Grand Order save files off an Android phone via `adb`.
+This script exists because `/Android/data` has been locked down on modern Android (11+) and can no longer be reached with a normal file manager. The script pulls a handful of small Fate/Grand Order save files off an Android phone via `adb`:
 
 | File | Size |
 |---|---|
