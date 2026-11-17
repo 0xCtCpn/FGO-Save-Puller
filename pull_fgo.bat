@@ -3,10 +3,6 @@ setlocal enabledelayedexpansion
 rem ---------------------------------------------------------------------------
 rem pull_fgo.bat - pull specific FGO save files from Android /Android/data via adb
 rem
-rem FGO's /Android/data/com.aniplex.fategrandorder.en folder is ~5.8 GB, so
-rem pulling the whole thing is slow and mostly pointless. These four small files
-rem under files/data are the ones that usually matter (account / transfer data).
-rem
 rem Usage:
 rem   pull_fgo.bat                     pull the default 4 files into fgo_android_data
 rem   pull_fgo.bat <outdir>             choose output folder
@@ -34,6 +30,8 @@ goto collect_args
 :args_done
 
 if "%COUNT%"=="0" (
+  rem Prefixes (first 4 hex chars) are matched against the real filenames on
+  rem the device below - adb pull cannot expand wildcards on its own.
   set "FILE1=54cc"
   set "FILE2=969b"
   set "FILE3=644b"
@@ -151,21 +149,42 @@ if not exist "%OUTDIR%\files\data\" mkdir "%OUTDIR%\files\data"
 set /a OK=0
 set /a FAIL=0
 set /a i=1
+
+rem Scratch file for the device `ls` output.
+set "LSTMP=%OUTDIR%\fgo_ls_%RANDOM%%RANDOM%.tmp"
+if defined TEMP set "LSTMP=%TEMP%\fgo_ls_%RANDOM%%RANDOM%.tmp"
+
 :pull_loop
 if !i! GTR %COUNT% goto pull_done
 call set "f=%%FILE!i!%%"
-"%ADB%" pull "%REMOTE_BASE%/!f!" "%OUTDIR%\files\data" >nul 2>&1
-if errorlevel 1 (
+
+"%ADB%" exec-out "ls -1 %REMOTE_BASE%/!f!*" > "%LSTMP%" 2>nul
+
+set "MATCHED="
+for /f "usebackq delims=" %%n in ("%LSTMP%") do (
+  if not "%%n"=="" (
+    set "MATCHED=1"
+    "%ADB%" pull "%REMOTE_BASE%/%%n" "%OUTDIR%\files\data" >nul 2>&1
+    if errorlevel 1 (
+      echo   failed: %%n
+      set /a FAIL+=1
+    ) else (
+      echo   ok: %%n
+      set /a OK+=1
+    )
+  )
+)
+
+if not defined MATCHED (
   echo   missing: !f!
   set /a FAIL+=1
-) else (
-  echo   ok: !f!
-  set /a OK+=1
 )
+
 set /a i+=1
 goto pull_loop
 
 :pull_done
+del "%LSTMP%" >nul 2>&1
 echo.
 echo pulled !OK! file(s), !FAIL! missing -^> %OUTDIR%\files\data\
 if "!FAIL!"=="0" (exit /b 0) else (exit /b 1)

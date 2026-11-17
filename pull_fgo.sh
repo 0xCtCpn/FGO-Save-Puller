@@ -1,10 +1,6 @@
 #!/usr/bin/env bash
 # pull_fgo.sh — pull specific FGO save files from Android /Android/data via adb.
 #
-# FGO's /Android/data/com.aniplex.fategrandorder.en folder is ~5.8 GB, so pulling the
-# whole thing is slow and mostly pointless. These four small files under files/data are
-# the ones that usually matter (account / transfer data).
-#
 # Usage:
 #   ./pull_fgo.sh                  # pull the default 4 files
 #   ./pull_fgo.sh <outdir>         # pull the default 4 files into <outdir>
@@ -193,15 +189,37 @@ done
 mkdir -p "${OUTDIR}/files/data"
 cd "${OUTDIR}/files/data"
 
+# Expand one prefix into the real filename(s) on the device.
+#   adb pull cannot expand wildcards, so let the device shell match it.
+resolve_files() { # <prefix>
+  MSYS_NO_PATHCONV=1 "$ADB" exec-out "ls -1 ${REMOTE_BASE}/$1*" 2>/dev/null \
+    | tr -d '\r' \
+    | sed 's#.*/##' \
+    || true
+}
+
 ok=0
 fail=0
-for f in "${FILES[@]}"; do
-  if MSYS_NO_PATHCONV=1 "$ADB" pull "${REMOTE_BASE}/${f}" "./" 2>/dev/null; then
-    ok=$((ok + 1))
-  else
-    echo "  missing: $f" >&2
+for prefix in "${FILES[@]}"; do
+  names=()
+  while IFS= read -r n; do
+    [ -n "$n" ] && names+=("$n")
+  done < <(resolve_files "$prefix")
+
+  if [ "${#names[@]}" -eq 0 ]; then
+    echo "  missing: $prefix" >&2
     fail=$((fail + 1))
+    continue
   fi
+
+  for name in "${names[@]}"; do
+    if MSYS_NO_PATHCONV=1 "$ADB" pull "${REMOTE_BASE}/${name}" "./" 2>/dev/null; then
+      ok=$((ok + 1))
+    else
+      echo "  failed: $name" >&2
+      fail=$((fail + 1))
+    fi
+  done
 done
 
 echo
