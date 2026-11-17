@@ -216,7 +216,7 @@ for prefix in "${FILES[@]}"; do
     if MSYS_NO_PATHCONV=1 "$ADB" pull "${REMOTE_BASE}/${name}" "./" 2>/dev/null; then
       ok=$((ok + 1))
     else
-      echo "  failed: $name" >&2
+      echo "  failed: $prefix" >&2
       fail=$((fail + 1))
     fi
   done

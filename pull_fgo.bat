@@ -162,15 +162,17 @@ call set "f=%%FILE!i!%%"
 
 set "MATCHED="
 for /f "usebackq delims=" %%n in ("%LSTMP%") do (
-  if not "%%n"=="" (
-    set "MATCHED=1"
-    "%ADB%" pull "%REMOTE_BASE%/%%n" "%OUTDIR%\files\data" >nul 2>&1
-    if errorlevel 1 (
-      echo   failed: %%n
-      set /a FAIL+=1
-    ) else (
-      echo   ok: %%n
-      set /a OK+=1
+  for %%A in ("%%n") do (
+    if not "%%~nxA"=="" (
+      set "MATCHED=1"
+      "%ADB%" pull "%REMOTE_BASE%/%%~nxA" "%OUTDIR%\files\data" >nul 2>&1
+      if errorlevel 1 (
+        echo   failed: !f!
+        set /a FAIL+=1
+      ) else (
+        echo   ok: !f!
+        set /a OK+=1
+      )
     )
   )
 )
@@ -186,5 +188,5 @@ goto pull_loop
 :pull_done
 del "%LSTMP%" >nul 2>&1
 echo.
-echo pulled !OK! file(s), !FAIL! missing -^> %OUTDIR%\files\data\
+echo pulled !OK! file(s), !FAIL! failed/missing -^> %OUTDIR%\files\data\
 if "!FAIL!"=="0" (exit /b 0) else (exit /b 1)
